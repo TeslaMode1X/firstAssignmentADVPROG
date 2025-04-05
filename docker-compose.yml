@@ -1,0 +1,61 @@
+version: "3.8"
+
+services:
+  api-gateway:
+    build: ./api-gateway
+    ports:
+      - "8080:8080"
+    env_file:
+      - ./api-gateway/.env.api-gateway
+    depends_on:
+      - inventory
+      - orders
+    networks:
+      - app-network
+
+  inventory:
+    build: ./inventory
+    ports:
+      - "8081:8081"
+    env_file:
+      - ./inventory/.env.inventory
+    depends_on:
+      - inventory_db
+    networks:
+      - app-network
+
+  orders:
+    build: ./inventory
+    ports:
+      - "8082:8082"
+    env_file:
+      - ./orders/.env.orders
+    depends_on:
+      - orders_db
+    networks:
+      - app-network
+
+  inventory_db:
+    image: postgres:15
+    env_file:
+      - ./inventory/.env.inventory
+    ports:
+      - "5433:5432"
+    networks:
+      - app-network
+
+  orders_db:
+    image: postgres:15
+    env_file:
+      - ./orders/.env.orders
+    ports:
+      - "5434:5432"
+    networks:
+      - app-network
+
+
+
+networks:
+  app-network:
+    driver: bridge
+
