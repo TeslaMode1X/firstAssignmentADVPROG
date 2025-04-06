@@ -54,6 +54,10 @@ func (s *ginServer) initializeProductHttpHandler() {
 
 	productRouters := s.app.Group("/product")
 	{
-		productRouters.POST("", productHandler.CreateProduct)
+		productRouters.POST("/create", productHandler.CreateProduct)
+		productRouters.GET("", productHandler.GetProducts)
+		productRouters.GET(":id", productHandler.GetProductByID)
+		productRouters.PATCH("", productHandler.UpdateProduct)
+		productRouters.DELETE(":id", productHandler.DeleteProduct)
 	}
 }
