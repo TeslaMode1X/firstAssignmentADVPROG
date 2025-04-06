@@ -1,6 +1,9 @@
 package model
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 type Category struct {
 	ID          int64
@@ -9,4 +12,11 @@ type Category struct {
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 	DeletedAt   *time.Time
+}
+
+func (c *Category) Validate() error {
+	if c.Name == "" {
+		return fmt.Errorf("category name cannot be empty")
+	}
+	return nil
 }

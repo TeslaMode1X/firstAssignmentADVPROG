@@ -2,6 +2,9 @@ package server
 
 import (
 	"fmt"
+	"github.com/TeslaMode1X/firstAssignmentADVPROG/inventory/internal/handler"
+	"github.com/TeslaMode1X/firstAssignmentADVPROG/inventory/internal/repository"
+	"github.com/TeslaMode1X/firstAssignmentADVPROG/inventory/internal/usecase"
 	"log"
 	"net/http"
 
@@ -29,13 +32,28 @@ func NewGinServer(conf *config.Config, db database.Database, log *log.Logger) Se
 }
 
 func (s *ginServer) Start() {
+	s.app.Use(gin.Recovery())
+	s.app.Use(gin.Logger())
+
 	s.app.GET("/v1/health", func(c *gin.Context) {
 		c.String(http.StatusOK, "OK")
 	})
 
-	serverUrl := fmt.Sprintf(":%s", s.cfg.Server.Port)
+	s.initializeProductHttpHandler()
 
+	serverUrl := fmt.Sprintf(":%s", s.cfg.Server.Port)
 	if err := s.app.Run(serverUrl); err != nil {
 		s.log.Panic(err)
+	}
+}
+
+func (s *ginServer) initializeProductHttpHandler() {
+	productRepository := repository.NewProductPostgresRepository(s.db)
+	productUseCase := usecase.NewProductUsecaseImpl(productRepository)
+	productHandler := handler.NewProductHttpHandler(productUseCase)
+
+	productRouters := s.app.Group("/product")
+	{
+		productRouters.POST("", productHandler.CreateProduct)
 	}
 }
