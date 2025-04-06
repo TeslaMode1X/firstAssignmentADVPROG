@@ -15,15 +15,21 @@ services:
       timeout: 5s
       retries: 5
 
-#  orders_db:
-#    container_name: orders_db
-#    image: postgres:15
-#    env_file:
-#      - ./orders/.env.orders
-#    ports:
-#      - "5434:5432"
-#    networks:
-#      - app-network
+  orders_db:
+    container_name: orders_db
+    image: postgres:15
+    env_file:
+      - ./orders/.env.orders
+    ports:
+      - "5434:5432"
+    networks:
+      - app-network
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-U", "postgres" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+#
 #  api-gateway:
 #    build:
 #      context: .
@@ -36,7 +42,7 @@ services:
 #      - inventory
 #      - orders
 #    networks:
-#      - app-network
+#      - handler-network
 
   inventory:
     container_name: inventory_microservice
@@ -53,19 +59,20 @@ services:
     networks:
       - app-network
 
-#  orders:
-#    container_name: orders_microservice
-#    build:
-#      context: .
-#      dockerfile: ./orders/Dockerfile
-#    ports:
-#      - "8082:8082"
-#    env_file:
-#      - ./orders/.env.orders
-#    depends_on:
-#      - orders_db
-#    networks:
-#      - app-network
+  orders:
+    container_name: orders_microservice
+    build:
+      context: .
+      dockerfile: ./orders/Dockerfile
+    ports:
+      - "8082:8082"
+    env_file:
+      - ./orders/.env.orders
+    depends_on:
+      orders_db:
+        condition: service_healthy
+    networks:
+      - app-network
 
 networks:
   app-network:
