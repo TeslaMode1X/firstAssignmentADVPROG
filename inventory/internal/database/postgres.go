@@ -1,6 +1,8 @@
 package database
 
 import (
+	"fmt"
+	"gorm.io/driver/postgres"
 	"sync"
 
 	"github.com/TeslaMode1X/firstAssignmentADVPROG/inventory/config"
@@ -21,24 +23,24 @@ func (p *postgresDatabase) GetDb() *gorm.DB {
 }
 
 func NewPostgresDatabase(conf *config.Config) Database {
-	//once.Do(func() {
-	//	dsn := fmt.Sprintf(
-	//		"host=%s user=%s password=%s dbname=%s port=%s sslmode=%s",
-	//		conf.DB.Host,
-	//		conf.DB.User,
-	//		conf.DB.Password,
-	//		conf.DB.DatabaseName,
-	//		conf.DB.Port,
-	//		conf.DB.SSLMode,
-	//	)
-	//
-	//	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
-	//	if err != nil {
-	//		panic(fmt.Sprintf("failed to connect database: %v", err))
-	//	}
-	//
-	//	dbInstance = &postgresDatabase{Db: db}
-	//})
+	once.Do(func() {
+		dsn := fmt.Sprintf(
+			"host=%s user=%s password=%s dbname=%s port=%s sslmode=%s",
+			conf.DB.Host,
+			conf.DB.User,
+			conf.DB.Password,
+			conf.DB.DatabaseName,
+			conf.DB.Port,
+			conf.DB.SSLMode,
+		)
+
+		db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+		if err != nil {
+			panic(fmt.Sprintf("failed to connect database: %v", err))
+		}
+
+		dbInstance = &postgresDatabase{Db: db}
+	})
 
 	return dbInstance
 }

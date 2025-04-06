@@ -1,8 +1,13 @@
-FROM golang:1.21-alpine AS builder
+FROM golang:1.23.5-alpine AS builder
 WORKDIR /app
-COPY ../go.mod ../go.sum ./
+
+COPY go.mod go.sum ./
 RUN go mod download
-COPY . .
-RUN go build -o orders ./cmd/orders/main.go
+
+COPY ./orders ./orders
+
+WORKDIR /app/orders
+RUN go build -o orders_service ./cmd/orders/main.go
+
 EXPOSE 8081
-CMD ["./orders"]
+CMD ["./orders_service"]

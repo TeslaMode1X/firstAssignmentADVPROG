@@ -1,8 +1,13 @@
-FROM golang:1.21-alpine AS builder
+FROM golang:1.23.5-alpine AS builder
 WORKDIR /app
-COPY ../go.mod ../go.sum ./
+
+COPY go.mod go.sum ./
 RUN go mod download
-COPY . .
-RUN go build -o api-gateway ./cmd/api-gateway/main.go
-EXPOSE 8080
-CMD ["./api-gateway"]
+
+COPY ./api-gateway ./api-gateway
+
+WORKDIR /app/api-gateway
+RUN go build -o api-gateway_service ./cmd/api-gateway/main.go
+
+EXPOSE 8081
+CMD ["./api-gateway_service"]

@@ -1,59 +1,71 @@
-version: "3.8"
-
 services:
-  api-gateway:
-    build: ./api-gateway
-    ports:
-      - "8080:8080"
-    env_file:
-      - ./api-gateway/.env.api-gateway
-    depends_on:
-      - inventory
-      - orders
-    networks:
-      - app-network
-
-  inventory:
-    build: ./inventory
-    ports:
-      - "8081:8081"
-    env_file:
-      - ./inventory/.env.inventory
-    depends_on:
-      - inventory_db
-    networks:
-      - app-network
-
-  orders:
-    build: ./inventory
-    ports:
-      - "8082:8082"
-    env_file:
-      - ./orders/.env.orders
-    depends_on:
-      - orders_db
-    networks:
-      - app-network
-
   inventory_db:
+    container_name: inventory_db
     image: postgres:15
+    restart: always
     env_file:
       - ./inventory/.env.inventory
     ports:
       - "5433:5432"
     networks:
       - app-network
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
-  orders_db:
-    image: postgres:15
-    env_file:
-      - ./orders/.env.orders
+#  orders_db:
+#    container_name: orders_db
+#    image: postgres:15
+#    env_file:
+#      - ./orders/.env.orders
+#    ports:
+#      - "5434:5432"
+#    networks:
+#      - app-network
+#  api-gateway:
+#    build:
+#      context: .
+#      dockerfile: ./api-gateway/Dockerfile
+#    ports:
+#      - "8080:8080"
+#    env_file:
+#      - ./api-gateway/.env.api-gateway
+#    depends_on:
+#      - inventory
+#      - orders
+#    networks:
+#      - app-network
+
+  inventory:
+    container_name: inventory_microservice
+    build:
+      context: .
+      dockerfile: ./inventory/Dockerfile
     ports:
-      - "5434:5432"
+      - "8081:8081"
+    env_file:
+      - ./inventory/.env.inventory
+    depends_on:
+      inventory_db:
+        condition: service_healthy
     networks:
       - app-network
 
-
+#  orders:
+#    container_name: orders_microservice
+#    build:
+#      context: .
+#      dockerfile: ./orders/Dockerfile
+#    ports:
+#      - "8082:8082"
+#    env_file:
+#      - ./orders/.env.orders
+#    depends_on:
+#      - orders_db
+#    networks:
+#      - app-network
 
 networks:
   app-network:

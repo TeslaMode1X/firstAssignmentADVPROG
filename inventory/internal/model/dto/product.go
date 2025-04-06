@@ -1,19 +1,24 @@
 package dto
 
 import (
+	"gorm.io/gorm"
 	"time"
 )
 
 type ProductDTO struct {
-	ID          int64     `gorm:"primaryKey;autoIncrement"`
-	Name        string    `gorm:"type:varchar(255);not null"`
-	Description string    `gorm:"type:text"`
-	Price       float32   `gorm:"not null"`
-	StockLevel  int       `gorm:"not null"`
-	CategoryID  int64     `gorm:"index"`
-	CreatedAt   time.Time `gorm:"autoCreateTime"`
-	UpdatedAt   time.Time `gorm:"autoUpdateTime"`
-	DeletedAt   time.Time `gorm:"autoDeleteTime"`
+	ID          int64          `gorm:"primaryKey;autoIncrement"`
+	Name        string         `gorm:"type:varchar(255);not null"`
+	Description string         `gorm:"type:text"`
+	Price       float32        `gorm:"not null"`
+	StockLevel  int            `gorm:"not null"`
+	CategoryID  int64          `gorm:"index"`
+	CreatedAt   time.Time      `gorm:"autoCreateTime"`
+	UpdatedAt   time.Time      `gorm:"autoUpdateTime"`
+	DeletedAt   gorm.DeletedAt `gorm:"autoDeleteTime"`
+}
+
+func (CategoryDTO) TableName() string {
+	return "categories"
 }
 
 type ProductResponse struct {

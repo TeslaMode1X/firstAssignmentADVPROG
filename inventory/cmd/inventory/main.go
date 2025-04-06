@@ -15,7 +15,7 @@ func main() {
 	cfg := config.LoadConfig()
 	db := database.NewPostgresDatabase(cfg)
 
-	//migrateAndSeed(db)
+	migrateAndSeed(db)
 
 	l := log.New(os.Stdout, "inventory-gin ", log.LstdFlags|log.Lmicroseconds|log.Lshortfile)
 	server.NewGinServer(cfg, db, l).Start()

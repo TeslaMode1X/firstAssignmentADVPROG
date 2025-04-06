@@ -14,6 +14,10 @@ type CategoryDTO struct {
 	DeletedAt   gorm.DeletedAt `gorm:"index"`
 }
 
+func (ProductDTO) TableName() string {
+	return "products"
+}
+
 type CategoryResponse struct {
 	ID          int64      `json:"id"`
 	Name        string     `json:"name"`
