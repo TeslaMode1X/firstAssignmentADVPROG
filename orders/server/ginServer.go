@@ -50,7 +50,7 @@ func (s *ginServer) Start() {
 
 func (s *ginServer) initializeOrderHttpHandler() {
 	orderRepository := repository.NewOrderPostgresRepository(s.db)
-	clientRepo := client.NewInventoryClient("http://inventory_microservice:8081")
+	clientRepo := client.NewInventoryClient("http://api_gateway:8080")
 	orderUseCase := usecase.NewOrderUsecaseImpl(orderRepository, clientRepo)
 	orderHandler := handler.NewOrderHttpHandler(orderUseCase)
 
