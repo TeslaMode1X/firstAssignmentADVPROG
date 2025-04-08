@@ -8,6 +8,8 @@ import (
 	"github.com/TeslaMode1X/firstAssignmentADVPROG/inventory/internal/model/dto"
 	"github.com/labstack/gommon/log"
 	"gorm.io/gorm"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -115,6 +117,47 @@ func (p *ProductPostgresRepository) ProductDelete(id int) error {
 	return nil
 }
 
+func (p *ProductPostgresRepository) ProductsExists(listOfProducts []string) (bool, error) {
+	for _, productIDStr := range listOfProducts {
+		var product dto.ProductDTO
+
+		productID, err := strconv.Atoi(productIDStr)
+		if err != nil {
+			log.Errorf("Invalid product ID format: %v", err)
+			return false, fmt.Errorf("invalid product ID format: %v", err)
+		}
+
+		result := p.db.GetDb().Table("products").Where("id = ?", productID).First(&product)
+
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			log.Errorf("Product with ID %d not found", productID)
+			return false, nil
+		}
+
+		if result.Error != nil {
+			log.Errorf("ProductsExists error: %v", result.Error)
+			return false, result.Error
+		}
+	}
+	return true, nil
+}
+
+func parseProductIDs(idsString string) []string {
+	if idsString == "" {
+		return []string{}
+	}
+
+	ids := strings.Split(idsString, ",")
+	var cleanIDs []string
+	for _, id := range ids {
+		cleanID := strings.TrimSpace(id)
+		if cleanID != "" {
+			cleanIDs = append(cleanIDs, cleanID)
+		}
+	}
+	return cleanIDs
+}
+
 func toProductDTO(prod *model.Product) *dto.ProductDTO {
 	var deletedAt gorm.DeletedAt
 	if prod.DeletedAt != nil {
@@ -136,6 +179,36 @@ func toProductDTO(prod *model.Product) *dto.ProductDTO {
 	}
 }
 
+func toPromotionDTO(prod *model.Promotion) *dto.PromotionDTO {
+	ids := strings.Join(prod.ApplicableProducts, ", ")
+
+	return &dto.PromotionDTO{
+		ID:                 prod.ID,
+		Name:               prod.Name,
+		Description:        prod.Description,
+		DiscountPercentage: prod.DiscountPercentage,
+		ApplicableProducts: ids,
+		StartDate:          prod.StartDate,
+		EndDate:            prod.EndDate,
+		IsActive:           true,
+	}
+}
+
+func toPromotionModel(prod *dto.PromotionDTO) *model.Promotion {
+	productIDs := parseProductIDs(prod.ApplicableProducts)
+
+	return &model.Promotion{
+		ID:                 prod.ID,
+		Name:               prod.Name,
+		Description:        prod.Description,
+		DiscountPercentage: prod.DiscountPercentage,
+		ApplicableProducts: productIDs,
+		StartDate:          prod.StartDate,
+		EndDate:            prod.EndDate,
+		IsActive:           prod.IsActive,
+	}
+}
+
 func toProductModel(dto *dto.ProductDTO) model.Product {
 	var deletedAt *time.Time
 	if dto.DeletedAt.Valid {
@@ -154,3 +227,5 @@ func toProductModel(dto *dto.ProductDTO) model.Product {
 		DeletedAt:   deletedAt,
 	}
 }
+
+//curl -X POST http://localhost:8080/promotion -H "Content-Type: application/json" -d '{ "id": "1", "name": "Spring Sale", "description": "20% off selected items", "discountPercentage": 20.0, "applicableProducts": ["4"], "startDate": "2025-04-07T00:00:00Z", "endDate": "2025-04-14T23:59:59Z" }'

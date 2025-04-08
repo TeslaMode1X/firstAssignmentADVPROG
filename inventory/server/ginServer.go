@@ -49,15 +49,20 @@ func (s *ginServer) Start() {
 
 func (s *ginServer) initializeProductHttpHandler() {
 	productRepository := repository.NewProductPostgresRepository(s.db)
-	productUseCase := usecase.NewProductUsecaseImpl(productRepository)
-	productHandler := handler.NewProductHttpHandler(productUseCase)
+	promoteRepository := repository.NewPromotePostgresRepository(s.db)
+	productUseCase := usecase.NewProductUsecaseImpl(productRepository, promoteRepository)
+	promotionUseCase := usecase.NewPromoteUsecaseImpl(productRepository, promoteRepository)
+	productHandler := handler.NewProductHttpHandler(productUseCase, promotionUseCase)
 
 	productRouters := s.app.Group("/product")
 	{
 		productRouters.POST("/create", productHandler.CreateProduct)
 		productRouters.GET("", productHandler.GetProducts)
 		productRouters.GET(":id", productHandler.GetProductByID)
+		productRouters.GET("/promotion", productHandler.GetProductWithPromotion)
 		productRouters.PATCH("", productHandler.UpdateProduct)
 		productRouters.DELETE(":id", productHandler.DeleteProduct)
+		productRouters.DELETE("/promotion/:id", productHandler.DeletePromotion)
+		productRouters.POST("/promotion", productHandler.CreatePromotion)
 	}
 }

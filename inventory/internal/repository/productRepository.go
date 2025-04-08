@@ -10,4 +10,5 @@ type ProductRepository interface {
 	GetProductByID(id int) (*model.Product, error)
 	ProductUpdate(product *model.Product) error
 	ProductDelete(id int) error
+	ProductsExists(listOfProducts []string) (bool, error)
 }

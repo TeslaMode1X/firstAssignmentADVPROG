@@ -21,6 +21,14 @@ func NewGatewayHandler(ordersURL, inventoryURL string) *GatewayHandler {
 	}
 }
 
+func (h *GatewayHandler) CreatePromotion(c *gin.Context) {
+	h.proxyRequest(c, h.inventoryURL+"/product/promotion", "POST")
+}
+
+func (h *GatewayHandler) GetPromotions(c *gin.Context) {
+	h.proxyRequest(c, h.inventoryURL+"/product/promotion", "GET")
+}
+
 func (h *GatewayHandler) CreateOrder(c *gin.Context) {
 	h.proxyRequest(c, h.ordersURL+"/order/create", "POST")
 }
@@ -51,6 +59,11 @@ func (h *GatewayHandler) GetProducts(c *gin.Context) {
 func (h *GatewayHandler) DeleteProduct(c *gin.Context) {
 	id := c.Param("id")
 	h.proxyRequest(c, h.inventoryURL+"/product/"+id, "DELETE")
+}
+
+func (h *GatewayHandler) DeletePromotion(c *gin.Context) {
+	id := c.Param("id")
+	h.proxyRequest(c, h.inventoryURL+"/product/promotion/"+id, "DELETE")
 }
 
 func (h *GatewayHandler) proxyRequest(c *gin.Context, url, method string) {

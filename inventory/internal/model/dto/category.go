@@ -15,7 +15,7 @@ type CategoryDTO struct {
 }
 
 func (ProductDTO) TableName() string {
-	return "products"
+	return "category"
 }
 
 type CategoryResponse struct {

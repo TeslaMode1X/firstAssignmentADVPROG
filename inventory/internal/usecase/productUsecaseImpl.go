@@ -8,10 +8,11 @@ import (
 
 type ProductUsecaseImpl struct {
 	productRepository repository.ProductRepository
+	promoteRepository repository.PromoteRepository
 }
 
-func NewProductUsecaseImpl(productRepository repository.ProductRepository) *ProductUsecaseImpl {
-	return &ProductUsecaseImpl{productRepository: productRepository}
+func NewProductUsecaseImpl(productRepository repository.ProductRepository, promoteRepository repository.PromoteRepository) *ProductUsecaseImpl {
+	return &ProductUsecaseImpl{productRepository: productRepository, promoteRepository: promoteRepository}
 }
 
 func (uc *ProductUsecaseImpl) ProductDataProcessing(product *model.Product) error {

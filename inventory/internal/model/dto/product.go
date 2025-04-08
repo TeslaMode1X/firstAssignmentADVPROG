@@ -18,17 +18,16 @@ type ProductDTO struct {
 }
 
 func (CategoryDTO) TableName() string {
-	return "categories"
+	return "products"
 }
 
 type ProductResponse struct {
-	ID          int64      `json:"id"`
-	Name        string     `json:"name"`
-	Description string     `json:"description"`
-	Price       float32    `json:"price"`
-	StockLevel  int        `json:"stock_level"`
-	CategoryID  int64      `json:"category_id"`
-	CreatedAt   time.Time  `json:"created_at"`
-	UpdatedAt   time.Time  `json:"updated_at"`
-	DeletedAt   *time.Time `json:"deleted_at,omitempty"`
+	ID                 string    `json:"id"`
+	Name               string    `json:"name"`
+	Description        string    `json:"description"`
+	DiscountPercentage float64   `json:"discount_percentage"`
+	ApplicableProducts []string  `json:"applicable_products"`
+	StartDate          time.Time `json:"start_date"`
+	EndDate            time.Time `json:"end_date"`
+	IsActive           bool      `json:"is_active"`
 }

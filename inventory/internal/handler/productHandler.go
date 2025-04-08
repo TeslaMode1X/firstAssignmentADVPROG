@@ -9,3 +9,9 @@ type ProductHandler interface {
 	UpdateProduct(c *gin.Context)
 	DeleteProduct(c *gin.Context)
 }
+
+type PromotionHandler interface {
+	CreatePromotion(c *gin.Context)
+	GetProductWithPromotion(c *gin.Context)
+	DeletePromotion(c *gin.Context)
+}

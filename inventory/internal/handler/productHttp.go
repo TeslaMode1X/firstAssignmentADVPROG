@@ -11,11 +11,12 @@ import (
 )
 
 type ProductHttpHandler struct {
-	productUsecase usecase.ProductUsecase
+	productUsecase   usecase.ProductUsecase
+	promotionUsecase usecase.PromotionUsecase
 }
 
-func NewProductHttpHandler(pu usecase.ProductUsecase) *ProductHttpHandler {
-	return &ProductHttpHandler{productUsecase: pu}
+func NewProductHttpHandler(pu usecase.ProductUsecase, promotionUsecase usecase.PromotionUsecase) *ProductHttpHandler {
+	return &ProductHttpHandler{productUsecase: pu, promotionUsecase: promotionUsecase}
 }
 
 func (p *ProductHttpHandler) CreateProduct(c *gin.Context) {
@@ -89,6 +90,47 @@ func (p *ProductHttpHandler) DeleteProduct(c *gin.Context) {
 
 	if err := p.productUsecase.ProductDataDelete(id); err != nil {
 		handler.Response(c, http.StatusInternalServerError, "Failed to delete product: "+err.Error())
+		return
+	}
+
+	handler.Response(c, http.StatusOK, "success")
+}
+
+func (p *ProductHttpHandler) CreatePromotion(c *gin.Context) {
+	var product model.Promotion
+	if err := c.ShouldBindJSON(&product); err != nil {
+		handler.Response(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	if err := p.promotionUsecase.ProductDataCreatePromotion(&product); err != nil {
+		handler.Response(c, http.StatusInternalServerError, "Failed to create product: "+err.Error())
+		return
+	}
+
+	handler.Response(c, http.StatusOK, product)
+}
+
+func (p *ProductHttpHandler) GetProductWithPromotion(c *gin.Context) {
+	prods, err := p.promotionUsecase.ProductDataGetPromotions()
+	if err != nil {
+		handler.Response(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	handler.Response(c, http.StatusOK, prods)
+}
+
+func (p *ProductHttpHandler) DeletePromotion(c *gin.Context) {
+	idStr := c.Param("id")
+
+	if idStr == "" {
+		handler.Response(c, http.StatusBadRequest, "Invalid promotion ID")
+		return
+	}
+
+	if err := p.promotionUsecase.ProductDataDeletePromotion(idStr); err != nil {
+		handler.Response(c, http.StatusInternalServerError, "Failed to delete promotion: "+err.Error())
 		return
 	}
 

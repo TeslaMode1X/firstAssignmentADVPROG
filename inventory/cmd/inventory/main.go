@@ -22,7 +22,7 @@ func main() {
 }
 
 func migrateAndSeed(db database.Database) {
-	if err := db.GetDb().Migrator().AutoMigrate(&dto.CategoryDTO{}, &dto.ProductDTO{}); err != nil {
+	if err := db.GetDb().Migrator().AutoMigrate(&dto.CategoryDTO{}, &dto.ProductDTO{}, &dto.PromotionDTO{}); err != nil {
 		log.Fatalf("Failed to migrate database: %v", err)
 	}
 

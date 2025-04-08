@@ -13,6 +13,8 @@ func main() {
 	gatewayHandler := handler.NewGatewayHandler(ordersURL, inventoryURL)
 
 	r.POST("/orders", gatewayHandler.CreateOrder)
+	r.POST("/promotion", gatewayHandler.CreatePromotion)
+	r.GET("/get/promotion", gatewayHandler.GetPromotions)
 
 	r.GET("/orders", gatewayHandler.GetOrders)
 	r.GET("/orders/:id", gatewayHandler.GetOrderByID)
@@ -21,6 +23,7 @@ func main() {
 	r.GET("/product/:id", gatewayHandler.GetProductByID)
 
 	r.DELETE("/product/:id", gatewayHandler.DeleteProduct)
+	r.DELETE("/promotion/:id", gatewayHandler.DeletePromotion)
 	r.PATCH("/orders/:id", gatewayHandler.UpdateOrderStatus)
 
 	err := r.Run(":8080")
