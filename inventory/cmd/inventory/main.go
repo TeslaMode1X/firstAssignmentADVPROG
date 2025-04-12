@@ -18,7 +18,7 @@ func main() {
 	migrateAndSeed(db)
 
 	l := log.New(os.Stdout, "inventory-gin ", log.LstdFlags|log.Lmicroseconds|log.Lshortfile)
-	server.NewGinServer(cfg, db, l).Start()
+	server.NewGRPCServer(cfg, db, l).Start()
 }
 
 func migrateAndSeed(db database.Database) {

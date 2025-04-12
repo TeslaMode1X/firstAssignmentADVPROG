@@ -9,5 +9,5 @@ COPY ./orders ./orders
 WORKDIR /app/orders
 RUN go build -o orders_service ./cmd/orders/main.go
 
-EXPOSE 8081
+EXPOSE 50052
 CMD ["./orders_service"]
