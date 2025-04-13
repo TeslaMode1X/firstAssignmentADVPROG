@@ -16,8 +16,9 @@ func main() {
 
 	migrateAndSeed(db)
 
-	l := log.New(os.Stdout, "orders-gin ", log.LstdFlags|log.Lmicroseconds|log.Lshortfile)
-	server.NewGinServer(cfg, db, l).Start()
+	l := log.New(os.Stdout, "orders-rpc ", log.LstdFlags|log.Lmicroseconds|log.Lshortfile)
+
+	server.NewGRPCServer(cfg, db, l).Start()
 }
 
 func migrateAndSeed(db database.Database) {

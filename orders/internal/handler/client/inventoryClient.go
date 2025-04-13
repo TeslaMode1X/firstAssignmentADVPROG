@@ -11,19 +11,12 @@ import (
 )
 
 type ProductResponse struct {
-	ID          int64      `json:"ID"`
-	Name        string     `json:"Name"`
-	Description string     `json:"Description"`
-	Price       float32    `json:"Price"`
-	StockLevel  int        `json:"StockLevel"`
-	CategoryID  int64      `json:"CategoryID"`
-	CreatedAt   time.Time  `json:"CreatedAt"`
-	UpdatedAt   time.Time  `json:"UpdatedAt"`
-	DeletedAt   *time.Time `json:"DeletedAt"`
-}
-
-type ResponseWrapper struct {
-	Message ProductResponse `json:"message"`
+	ID          int64   `json:"id"`
+	Name        string  `json:"name"`
+	Description string  `json:"description"`
+	Price       float32 `json:"price"`
+	StockLevel  int     `json:"stock"`
+	CategoryID  string  `json:"category"`
 }
 
 type InventoryClient interface {
@@ -75,23 +68,19 @@ func (c *inventoryClient) GetProductByID(productID int64) (*ProductResponse, err
 		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
 
-	var responseWrapper ResponseWrapper
-	if err := json.Unmarshal(bodyBytes, &responseWrapper); err != nil {
-		log.Printf("Failed to decode response with wrapper: %v", err)
-
-		var product ProductResponse
-		if err := json.Unmarshal(bodyBytes, &product); err != nil {
-			log.Printf("Failed to decode response directly: %v", err)
-			return nil, fmt.Errorf("failed to decode response: %w", err)
-		}
-		log.Printf("Parsed product directly: ID=%d, Name=%s, StockLevel=%d",
-			product.ID, product.Name, product.StockLevel)
-		return &product, nil
+	var product ProductResponse
+	if err := json.Unmarshal(bodyBytes, &product); err != nil {
+		log.Printf("Failed to decode response: %v", err)
+		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
 
-	product := responseWrapper.Message
-	log.Printf("Parsed product from wrapper: ID=%d, Name=%s, StockLevel=%d",
-		product.ID, product.Name, product.StockLevel)
+	if product.ID == 0 {
+		log.Printf("Invalid product: ID is 0")
+		return nil, fmt.Errorf("invalid product: ID is 0")
+	}
+
+	log.Printf("Parsed product: ID=%d, Name=%s, StockLevel=%d, CategoryID=%s",
+		product.ID, product.Name, product.StockLevel, product.CategoryID)
 
 	return &product, nil
 }
@@ -109,13 +98,19 @@ func (c *inventoryClient) UpdateProductStock(productID int64, quantity int) erro
 
 	url := fmt.Sprintf("%s/product", c.baseURL)
 
+	categoryID := product.CategoryID
+	if categoryID == "" {
+		log.Printf("Warning: CategoryID is empty for product %d", productID)
+		categoryID = "0"
+	}
+
 	updateData := map[string]interface{}{
-		"ID":          productID,
-		"StockLevel":  product.StockLevel - quantity,
-		"Name":        product.Name,
-		"Description": product.Description,
-		"Price":       product.Price,
-		"CategoryID":  product.CategoryID,
+		"id":          productID,
+		"stock":       product.StockLevel - quantity,
+		"name":        product.Name,
+		"description": product.Description,
+		"price":       product.Price,
+		"category":    categoryID,
 	}
 
 	jsonData, err := json.Marshal(updateData)
@@ -123,7 +118,7 @@ func (c *inventoryClient) UpdateProductStock(productID int64, quantity int) erro
 		return fmt.Errorf("failed to marshal update data: %w", err)
 	}
 
-	req, err := http.NewRequest("PATCH", url, bytes.NewBuffer(jsonData))
+	req, err := http.NewRequest("PUT", url, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}

@@ -5,6 +5,7 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY ./orders ./orders
+COPY ./proto ./proto
 
 WORKDIR /app/orders
 RUN go build -o orders_service ./cmd/orders/main.go

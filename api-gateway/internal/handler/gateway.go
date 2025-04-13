@@ -4,22 +4,25 @@ import (
 	"bytes"
 	"context"
 	"github.com/TeslaMode1X/firstAssignmentADVPROG/proto/gen/inventory"
+	"github.com/TeslaMode1X/firstAssignmentADVPROG/proto/gen/orders"
 	"github.com/gin-gonic/gin"
 	"google.golang.org/grpc"
 	"io"
+	"log"
 	"net/http"
+	"strconv"
 )
 
 type GatewayHandler struct {
 	inventoryClient inventory.InventoryServiceClient
-	ordersURL       string
+	orderClient     orders.OrderServiceClient
 	httpClient      *http.Client
 }
 
-func NewGatewayHandler(inventoryConn *grpc.ClientConn, ordersURL string) *GatewayHandler {
+func NewGatewayHandler(inventoryConn *grpc.ClientConn, orderConn *grpc.ClientConn) *GatewayHandler {
 	return &GatewayHandler{
 		inventoryClient: inventory.NewInventoryServiceClient(inventoryConn),
-		ordersURL:       ordersURL,
+		orderClient:     orders.NewOrderServiceClient(orderConn),
 		httpClient:      &http.Client{},
 	}
 }
@@ -64,6 +67,9 @@ func (h *GatewayHandler) UpdateProduct(c *gin.Context) {
 	//	c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 	//	return
 	//}
+
+	log.Printf("Received update request: %+v", req)
+
 	resp, err := h.inventoryClient.UpdateProduct(context.Background(), &req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -100,36 +106,96 @@ func (h *GatewayHandler) GetProducts(c *gin.Context) {
 	c.JSON(http.StatusOK, resp.GetProducts())
 }
 
-func (h *GatewayHandler) CreatePromotion(c *gin.Context) {
-	h.proxyRequest(c, h.ordersURL+"/product/promotion", "POST")
-}
-
-func (h *GatewayHandler) GetPromotions(c *gin.Context) {
-	h.proxyRequest(c, h.ordersURL+"/product/promotion", "GET")
-}
+//func (h *GatewayHandler) CreatePromotion(c *gin.Context) {
+//	h.proxyRequest(c, h.ordersURL+"/product/promotion", "POST")
+//}
+//
+//func (h *GatewayHandler) GetPromotions(c *gin.Context) {
+//	h.proxyRequest(c, h.ordersURL+"/product/promotion", "GET")
+//}
 
 func (h *GatewayHandler) CreateOrder(c *gin.Context) {
-	h.proxyRequest(c, h.ordersURL+"/order/create", "POST")
+	var order orders.Order
+	if err := c.ShouldBindJSON(&order); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	resp, err := h.orderClient.CreateOrder(c.Request.Context(), &order)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, resp)
 }
 
 func (h *GatewayHandler) GetOrders(c *gin.Context) {
-	h.proxyRequest(c, h.ordersURL+"/order", "GET")
+	var req orders.Empty
+	if err := c.ShouldBindQuery(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	resp, err := h.orderClient.GetOrder(c.Request.Context(), &req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, resp.GetOrder())
 }
 
 func (h *GatewayHandler) GetOrderByID(c *gin.Context) {
 	id := c.Param("id")
-	h.proxyRequest(c, h.ordersURL+"/order/"+id, "GET")
+	orderId, err := strconv.Atoi(id)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid order ID"})
+		return
+	}
+	resp, err := h.orderClient.GetOrderById(c.Request.Context(), &orders.GetOrderRequest{
+		Id: int32(orderId),
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, resp)
 }
 
 func (h *GatewayHandler) UpdateOrderStatus(c *gin.Context) {
 	id := c.Param("id")
-	h.proxyRequest(c, h.ordersURL+"/order/"+id, "PATCH")
+	orderId, err := strconv.Atoi(id)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid order ID"})
+		return
+	}
+
+	var requestBody struct {
+		Message string `json:"message"`
+	}
+	if err := c.ShouldBindJSON(&requestBody); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	_, err = h.orderClient.UpdateOrderStatusById(c.Request.Context(), &orders.UpdateOrderStatusByIdRequest{
+		Id:      int32(orderId),
+		Message: requestBody.Message,
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.Status(http.StatusOK)
 }
 
-func (h *GatewayHandler) DeletePromotion(c *gin.Context) {
-	id := c.Param("id")
-	h.proxyRequest(c, h.ordersURL+"/product/promotion/"+id, "DELETE")
-}
+//func (h *GatewayHandler) DeletePromotion(c *gin.Context) {
+//	id := c.Param("id")
+//	h.proxyRequest(c, h.ordersURL+"/product/promotion/"+id, "DELETE")
+//}
 
 func (h *GatewayHandler) proxyRequest(c *gin.Context, url, method string) {
 	body, _ := io.ReadAll(c.Request.Body)

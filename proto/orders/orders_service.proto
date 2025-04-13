@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package orders;
+option go_package = "./orders";
+
+message Empty {}
+
+message OrderItem {
+  int64 product_id = 1;
+  int32 quantity = 2;
+  string product_name = 3;
+  float price = 4;
+}
+
+message Order {
+  int32 id = 1;
+  repeated OrderItem items = 2;
+  float total_amount = 3;
+  string status = 4;
+}
+
+message GetOrderRequest {
+  int32 id = 1;
+}
+
+message CreateOrderResponse {
+  Order order = 1;
+}
+
+message GetOrderResponse {
+  repeated Order order = 1;
+}
+
+message GetOrderByIdResponse {
+  Order orders = 1;
+}
+
+message UpdateOrderStatusByIdRequest {
+  int32 id = 1;
+  string message = 2;
+}
+
+service OrderService {
+  rpc CreateOrder(Order) returns (CreateOrderResponse);
+  rpc GetOrder(Empty) returns (GetOrderResponse);
+  rpc GetOrderById(GetOrderRequest) returns (GetOrderByIdResponse);
+  rpc UpdateOrderStatusById(UpdateOrderStatusByIdRequest) returns (Empty);
+}
+
