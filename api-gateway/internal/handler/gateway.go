@@ -5,16 +5,20 @@ import (
 	"context"
 	"github.com/TeslaMode1X/firstAssignmentADVPROG/proto/gen/inventory"
 	"github.com/TeslaMode1X/firstAssignmentADVPROG/proto/gen/orders"
+	"github.com/TeslaMode1X/firstAssignmentADVPROG/proto/gen/promotion"
 	"github.com/gin-gonic/gin"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"io"
 	"log"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 type GatewayHandler struct {
 	inventoryClient inventory.InventoryServiceClient
+	promotionClient promotion.PromotionServiceClient
 	orderClient     orders.OrderServiceClient
 	httpClient      *http.Client
 }
@@ -23,8 +27,85 @@ func NewGatewayHandler(inventoryConn *grpc.ClientConn, orderConn *grpc.ClientCon
 	return &GatewayHandler{
 		inventoryClient: inventory.NewInventoryServiceClient(inventoryConn),
 		orderClient:     orders.NewOrderServiceClient(orderConn),
+		promotionClient: promotion.NewPromotionServiceClient(inventoryConn),
 		httpClient:      &http.Client{},
 	}
+}
+
+func (h *GatewayHandler) CreatePromotion(c *gin.Context) {
+	type createPromotionJSON struct {
+		Id                 string   `json:"id"`
+		Name               string   `json:"name"`
+		Description        string   `json:"description"`
+		DiscountPercentage float64  `json:"discount_percentage"`
+		ApplicableProducts []string `json:"applicable_products"`
+		StartDate          string   `json:"start_date"`
+		EndDate            string   `json:"end_date"`
+	}
+
+	var jsonReq createPromotionJSON
+	if err := c.ShouldBindJSON(&jsonReq); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	startDate, err := time.Parse(time.RFC3339, jsonReq.StartDate)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid start_date format, expected RFC3339"})
+		return
+	}
+
+	endDate, err := time.Parse(time.RFC3339, jsonReq.EndDate)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid end_date format, expected RFC3339"})
+		return
+	}
+
+	if startDate.After(endDate) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "start_date must be before end_date"})
+		return
+	}
+
+	req := &promotion.CreatePromotionRequest{
+		Id:                 jsonReq.Id,
+		Name:               jsonReq.Name,
+		Description:        jsonReq.Description,
+		DiscountPercentage: jsonReq.DiscountPercentage,
+		ApplicableProducts: jsonReq.ApplicableProducts,
+		StartDate:          timestamppb.New(startDate),
+		EndDate:            timestamppb.New(endDate),
+	}
+
+	resp, err := h.promotionClient.CreatePromotion(context.Background(), req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, resp.GetPromotion())
+}
+
+func (h *GatewayHandler) GetProductWithPromotion(c *gin.Context) {
+	var req promotion.Empty
+
+	resp, err := h.promotionClient.GetPromotions(context.Background(), &req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, resp.GetPromotions())
+}
+
+func (h *GatewayHandler) DeletePromotion(c *gin.Context) {
+	id := c.Param("id")
+	_, err := h.promotionClient.DeletePromotion(context.Background(), &promotion.DeletePromotionRequest{Id: id})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Promotion deleted"})
 }
 
 func (h *GatewayHandler) CreateProduct(c *gin.Context) {

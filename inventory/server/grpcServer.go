@@ -7,6 +7,7 @@ import (
 	"github.com/TeslaMode1X/firstAssignmentADVPROG/inventory/internal/service"
 	"github.com/TeslaMode1X/firstAssignmentADVPROG/inventory/internal/usecase"
 	"github.com/TeslaMode1X/firstAssignmentADVPROG/proto/gen/inventory"
+	"github.com/TeslaMode1X/firstAssignmentADVPROG/proto/gen/promotion"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 	"log"
@@ -24,13 +25,14 @@ func NewGRPCServer(conf *config.Config, db database.Database, log *log.Logger) S
 	productRepository := repository.NewProductPostgresRepository(db)
 	promoteRepository := repository.NewPromotePostgresRepository(db)
 	productUseCase := usecase.NewProductUsecaseImpl(productRepository, promoteRepository)
-	// promotionUseCase := usecase.NewPromoteUsecaseImpl(productRepository, promoteRepository)
+	promotionUseCase := usecase.NewPromoteUsecaseImpl(productRepository, promoteRepository)
 
 	grpcServer := grpc.NewServer()
 
 	reflection.Register(grpcServer)
 
 	inventory.RegisterInventoryServiceServer(grpcServer, service.NewInventoryService(productUseCase))
+	promotion.RegisterPromotionServiceServer(grpcServer, service.NewPromotionService(promotionUseCase))
 
 	return &grpcServerObject{
 		server: grpcServer,

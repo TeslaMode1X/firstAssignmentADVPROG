@@ -27,9 +27,9 @@ func main() {
 
 	r.POST("/orders", gatewayHandler.CreateOrder)
 
-	//r.POST("/promotion", gatewayHandler.CreatePromotion)
-	//
-	//r.GET("/get/promotion", gatewayHandler.GetPromotions)
+	r.POST("/promotion", gatewayHandler.CreatePromotion)
+
+	r.GET("/get/promotion", gatewayHandler.GetProductWithPromotion)
 
 	r.GET("/orders", gatewayHandler.GetOrders)
 	r.GET("/orders/:id", gatewayHandler.GetOrderByID)
@@ -43,7 +43,7 @@ func main() {
 
 	r.DELETE("/product/:id", gatewayHandler.DeleteProduct)
 
-	//r.DELETE("/promotion/:id", gatewayHandler.DeletePromotion)
+	r.DELETE("/promotion/:id", gatewayHandler.DeletePromotion)
 
 	r.PATCH("/orders/:id", gatewayHandler.UpdateOrderStatus)
 
