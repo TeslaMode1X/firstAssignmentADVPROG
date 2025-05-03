@@ -32,9 +32,11 @@ func main() {
 	r.GET("/get/promotion", gatewayHandler.GetProductWithPromotion)
 
 	r.GET("/orders", gatewayHandler.GetOrders)
+
 	r.GET("/orders/:id", gatewayHandler.GetOrderByID)
 
 	r.GET("/product", gatewayHandler.GetProducts)
+
 	r.GET("/product/:id", gatewayHandler.GetProductByID)
 
 	r.POST("/product", gatewayHandler.CreateProduct)

@@ -12,6 +12,15 @@ message OrderItem {
   float price = 4;
 }
 
+message Product {
+  int64 id = 1;
+  string name = 2;
+  string description = 3;
+  float price = 4;
+  int32 stock_level = 5;
+  int64 category_id = 6;
+}
+
 message Order {
   int32 id = 1;
   repeated OrderItem items = 2;

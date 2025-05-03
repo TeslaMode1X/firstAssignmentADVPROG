@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"github.com/TeslaMode1X/firstAssignmentADVPROG/inventory/pkg/nats/producer"
 	"github.com/TeslaMode1X/firstAssignmentADVPROG/proto/gen/inventory"
 	"strconv"
 	"strings"
@@ -15,11 +16,13 @@ import (
 type InventoryService struct {
 	inventory.UnimplementedInventoryServiceServer
 	productUsecase usecase.ProductUsecase
+	producer       *producer.InventoryProducer
 }
 
-func NewInventoryService(productUsecase usecase.ProductUsecase) *InventoryService {
+func NewInventoryService(productUsecase usecase.ProductUsecase, producer *producer.InventoryProducer) *InventoryService {
 	return &InventoryService{
 		productUsecase: productUsecase,
+		producer:       producer,
 	}
 }
 
@@ -37,8 +40,15 @@ func (s *InventoryService) CreateProduct(ctx context.Context, req *inventory.Cre
 		CategoryID:  int64(uint(categoryID)),
 	}
 
-	if err := s.productUsecase.ProductDataProcessing(product); err != nil {
+	if err = s.productUsecase.ProductDataProcessing(product); err != nil {
 		return nil, status.Errorf(codes.Internal, "Failed to create product: %v", err)
+	}
+
+	if err = s.producer.PublishProductCreated(ctx, *product); err != nil {
+		// Логируем ошибку, но не прерываем выполнение
+		// В реальном приложении можно использовать retry механизм
+		// или сохранять события в outbox для последующей отправки
+		// log.Printf("Failed to publish product created event: %v", err)
 	}
 
 	return &inventory.ProductResponse{
@@ -61,14 +71,12 @@ func (s *InventoryService) GetProductByID(ctx context.Context, req *inventory.Ge
 
 	product, err := s.productUsecase.ProductDataGetByID(int(id))
 	if err != nil {
-		// Проверяем, что продукт действительно не найден
 		if strings.Contains(err.Error(), "record not found") {
 			return nil, status.Errorf(codes.NotFound, "Product with ID %s not found", req.Id)
 		}
 		return nil, status.Errorf(codes.Internal, "Failed to get product: %v", err)
 	}
 
-	// Дополнительная проверка на nil
 	if product == nil {
 		return nil, status.Errorf(codes.NotFound, "Product with ID %s not found", req.Id)
 	}
@@ -150,6 +158,9 @@ func (s *InventoryService) GetProducts(ctx context.Context, _ *inventory.Empty) 
 			Stock:       int32(p.StockLevel),
 			Category:    strconv.FormatUint(uint64(p.CategoryID), 10),
 		})
+	}
+
+	if err := s.producer.PublishProductsCreated(ctx, products); err != nil {
 	}
 
 	return &inventory.GetProductsResponse{

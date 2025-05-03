@@ -1,4 +1,16 @@
 services:
+  nats:
+    container_name: nats_server
+    image: nats:latest
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    networks:
+      - app-network
+    volumes:
+      - ./nats-server.conf:/nats-server.conf
+    command: ["--config", "/nats-server.conf"]
+
   inventory_db:
     container_name: inventory_db
     image: postgres:15
@@ -30,6 +42,21 @@ services:
       timeout: 5s
       retries: 5
 
+  statistics_db:
+    container_name: statistics_db
+    image: postgres:15
+    env_file:
+      - ./statistics/.env.statistics
+    ports:
+      - "5435:5432"
+    networks:
+      - app-network
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-U", "postgres" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   api-gateway:
     container_name: api_gateway
     build:
@@ -40,6 +67,7 @@ services:
     depends_on:
       - inventory
       - orders
+      - statistics
     networks:
       - app-network
 
@@ -55,6 +83,8 @@ services:
     depends_on:
       inventory_db:
         condition: service_healthy
+      nats:
+        condition: service_started
     networks:
       - app-network
 
@@ -73,7 +103,23 @@ services:
     networks:
       - app-network
 
+  statistics:
+    container_name: statistics_microservice
+    build:
+      context: .
+      dockerfile: ./statistics/Dockerfile
+    ports:
+      - "50053:50053"
+    env_file:
+      - ./statistics/.env.statistics
+    depends_on:
+      statistics_db:
+        condition: service_healthy
+      nats:
+        condition: service_started
+    networks:
+      - app-network
+
 networks:
   app-network:
     driver: bridge
-

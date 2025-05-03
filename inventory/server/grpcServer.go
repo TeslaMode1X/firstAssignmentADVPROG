@@ -1,11 +1,14 @@
 package server
 
 import (
+	"context"
 	"github.com/TeslaMode1X/firstAssignmentADVPROG/inventory/config"
 	"github.com/TeslaMode1X/firstAssignmentADVPROG/inventory/internal/database"
 	"github.com/TeslaMode1X/firstAssignmentADVPROG/inventory/internal/repository"
 	"github.com/TeslaMode1X/firstAssignmentADVPROG/inventory/internal/service"
 	"github.com/TeslaMode1X/firstAssignmentADVPROG/inventory/internal/usecase"
+	"github.com/TeslaMode1X/firstAssignmentADVPROG/inventory/pkg/nats"
+	"github.com/TeslaMode1X/firstAssignmentADVPROG/inventory/pkg/nats/producer"
 	"github.com/TeslaMode1X/firstAssignmentADVPROG/proto/gen/inventory"
 	"github.com/TeslaMode1X/firstAssignmentADVPROG/proto/gen/promotion"
 	"google.golang.org/grpc"
@@ -24,6 +27,15 @@ type grpcServerObject struct {
 func NewGRPCServer(conf *config.Config, db database.Database, log *log.Logger) Server {
 	productRepository := repository.NewProductPostgresRepository(db)
 	promoteRepository := repository.NewPromotePostgresRepository(db)
+
+	natsClient, err := nats.NewClient(context.Background(), []string{"nats://nats:4222"}, "", false)
+	if err != nil {
+		log.Fatalf("Failed to connect to NATS: %v", err)
+	}
+	defer natsClient.Close()
+
+	inventoryProducer := producer.NewInventoryProducer(natsClient)
+
 	productUseCase := usecase.NewProductUsecaseImpl(productRepository, promoteRepository)
 	promotionUseCase := usecase.NewPromoteUsecaseImpl(productRepository, promoteRepository)
 
@@ -31,7 +43,7 @@ func NewGRPCServer(conf *config.Config, db database.Database, log *log.Logger) S
 
 	reflection.Register(grpcServer)
 
-	inventory.RegisterInventoryServiceServer(grpcServer, service.NewInventoryService(productUseCase))
+	inventory.RegisterInventoryServiceServer(grpcServer, service.NewInventoryService(productUseCase, inventoryProducer))
 	promotion.RegisterPromotionServiceServer(grpcServer, service.NewPromotionService(promotionUseCase))
 
 	return &grpcServerObject{

@@ -3,6 +3,7 @@ package service
 import (
 	"github.com/TeslaMode1X/firstAssignmentADVPROG/orders/internal/model"
 	"github.com/TeslaMode1X/firstAssignmentADVPROG/orders/internal/usecase"
+	"github.com/TeslaMode1X/firstAssignmentADVPROG/orders/pkg/nats/producer"
 	"github.com/TeslaMode1X/firstAssignmentADVPROG/proto/gen/orders"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
@@ -12,11 +13,13 @@ import (
 type OrdersService struct {
 	orders.UnimplementedOrderServiceServer
 	ordersUsecase usecase.OrderUsecase
+	producer      *producer.OrderProducer
 }
 
-func NewOrdersService(orderUsecase usecase.OrderUsecase) *OrdersService {
+func NewOrdersService(orderUsecase usecase.OrderUsecase, producer *producer.OrderProducer) *OrdersService {
 	return &OrdersService{
 		ordersUsecase: orderUsecase,
+		producer:      producer,
 	}
 }
 
@@ -52,6 +55,10 @@ func (s *OrdersService) CreateOrder(ctx context.Context, orderProto *orders.Orde
 		})
 	}
 
+	if err := s.producer.PublishProductCreated(ctx, *modelOrder); err != nil {
+		// Логируем ошибку, но не прерываем выполнение
+	}
+
 	return &orders.CreateOrderResponse{
 		Order: responseOrder,
 	}, nil
@@ -80,6 +87,10 @@ func (s *OrdersService) GetOrder(ctx context.Context, empty *orders.Empty) (*ord
 			Items:  protoItems,
 			Status: string(modelOrder.Status),
 		})
+	}
+
+	if err := s.producer.PublishProductsCreated(ctx, modelOrders); err != nil {
+		// Логируем ошибку, но не прерываем выполнение
 	}
 
 	return &orders.GetOrderResponse{

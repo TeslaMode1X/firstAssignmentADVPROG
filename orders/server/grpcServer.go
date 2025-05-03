@@ -1,12 +1,15 @@
 package server
 
 import (
+	"context"
 	"github.com/TeslaMode1X/firstAssignmentADVPROG/orders/config"
 	"github.com/TeslaMode1X/firstAssignmentADVPROG/orders/internal/database"
 	"github.com/TeslaMode1X/firstAssignmentADVPROG/orders/internal/handler/client"
 	"github.com/TeslaMode1X/firstAssignmentADVPROG/orders/internal/repository"
 	"github.com/TeslaMode1X/firstAssignmentADVPROG/orders/internal/service"
 	"github.com/TeslaMode1X/firstAssignmentADVPROG/orders/internal/usecase"
+	"github.com/TeslaMode1X/firstAssignmentADVPROG/orders/pkg/nats"
+	"github.com/TeslaMode1X/firstAssignmentADVPROG/orders/pkg/nats/producer"
 	"github.com/TeslaMode1X/firstAssignmentADVPROG/proto/gen/orders"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -27,11 +30,19 @@ func NewGRPCServer(conf *config.Config, db database.Database, log *log.Logger) S
 	orderUseCase := usecase.NewOrderUsecaseImpl(orderRepository, clientRepo)
 	//orderHandler := handler.NewOrderHttpHandler(orderUseCase)
 
+	natsClient, err := nats.NewClient(context.Background(), []string{"nats://nats:4222"}, "", false)
+	if err != nil {
+		log.Fatalf("Failed to connect to NATS: %v", err)
+	}
+	defer natsClient.Close()
+
+	OrdersProducer := producer.NewOrdersProducer(natsClient)
+
 	grpcServer := grpc.NewServer()
 
 	reflection.Register(grpcServer)
 
-	orders.RegisterOrderServiceServer(grpcServer, service.NewOrdersService(orderUseCase))
+	orders.RegisterOrderServiceServer(grpcServer, service.NewOrdersService(orderUseCase, OrdersProducer))
 
 	return &grpcServerObject{
 		server: grpcServer,
