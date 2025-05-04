@@ -17,5 +17,5 @@ func main() {
 
 	l := log.New(os.Stdout, "statistics-rpc", log.LstdFlags|log.Lmicroseconds|log.Lshortfile)
 
-	server.NewGinServer(cfg, db, l).Start()
+	server.NewGrpcServerObject(cfg, db, l).Start()
 }

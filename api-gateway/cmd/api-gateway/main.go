@@ -23,7 +23,13 @@ func main() {
 	}
 	defer orderConn.Close()
 
-	gatewayHandler := handler.NewGatewayHandler(inventoryConn, orderConn)
+	statisticsConn, err := grpc.NewClient("statistics:50053", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Fatalf("Failed to connect to statistics: %v", err)
+	}
+	defer statisticsConn.Close()
+
+	gatewayHandler := handler.NewGatewayHandler(inventoryConn, orderConn, statisticsConn)
 
 	r.POST("/orders", gatewayHandler.CreateOrder)
 
@@ -48,6 +54,10 @@ func main() {
 	r.DELETE("/promotion/:id", gatewayHandler.DeletePromotion)
 
 	r.PATCH("/orders/:id", gatewayHandler.UpdateOrderStatus)
+
+	r.GET("/statistics/inventory", gatewayHandler.GetInventoryStatistics)
+
+	r.GET("/statistics/order", gatewayHandler.GetOrdersStatistics)
 
 	err = r.Run(":8080")
 	if err != nil {

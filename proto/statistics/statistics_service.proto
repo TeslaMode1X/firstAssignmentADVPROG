@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package statistics;
+option go_package = "./statistics;";
+
+message Empty {}
+
+message GetInventoryStatisticsResponse {
+  int32 id = 1;
+  int32 total_products = 2;
+  int32 total_stock = 3;
+  int32 total_inventory_value = 4;
+}
+
+message GetOrderStatisticsResponse {
+  int32 id = 1;
+  int32 total_orders = 2;
+  float total_revenue = 3;
+  float average_price = 4;
+}
+
+service StatisticsService {
+  rpc GetInventoryStatistics(Empty) returns(GetInventoryStatisticsResponse);
+  rpc GetOrderStatistics(Empty) returns(GetOrderStatisticsResponse);
+}

@@ -6,6 +6,7 @@ import (
 	"github.com/TeslaMode1X/firstAssignmentADVPROG/proto/gen/inventory"
 	"github.com/TeslaMode1X/firstAssignmentADVPROG/proto/gen/orders"
 	"github.com/TeslaMode1X/firstAssignmentADVPROG/proto/gen/promotion"
+	"github.com/TeslaMode1X/firstAssignmentADVPROG/proto/gen/statistics"
 	"github.com/gin-gonic/gin"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -17,18 +18,20 @@ import (
 )
 
 type GatewayHandler struct {
-	inventoryClient inventory.InventoryServiceClient
-	promotionClient promotion.PromotionServiceClient
-	orderClient     orders.OrderServiceClient
-	httpClient      *http.Client
+	inventoryClient  inventory.InventoryServiceClient
+	promotionClient  promotion.PromotionServiceClient
+	orderClient      orders.OrderServiceClient
+	statisticsClient statistics.StatisticsServiceClient
+	httpClient       *http.Client
 }
 
-func NewGatewayHandler(inventoryConn *grpc.ClientConn, orderConn *grpc.ClientConn) *GatewayHandler {
+func NewGatewayHandler(inventoryConn *grpc.ClientConn, orderConn *grpc.ClientConn, statisticsConn *grpc.ClientConn) *GatewayHandler {
 	return &GatewayHandler{
-		inventoryClient: inventory.NewInventoryServiceClient(inventoryConn),
-		orderClient:     orders.NewOrderServiceClient(orderConn),
-		promotionClient: promotion.NewPromotionServiceClient(inventoryConn),
-		httpClient:      &http.Client{},
+		inventoryClient:  inventory.NewInventoryServiceClient(inventoryConn),
+		orderClient:      orders.NewOrderServiceClient(orderConn),
+		promotionClient:  promotion.NewPromotionServiceClient(inventoryConn),
+		statisticsClient: statistics.NewStatisticsServiceClient(statisticsConn),
+		httpClient:       &http.Client{},
 	}
 }
 
@@ -277,6 +280,38 @@ func (h *GatewayHandler) UpdateOrderStatus(c *gin.Context) {
 //	id := c.Param("id")
 //	h.proxyRequest(c, h.ordersURL+"/product/promotion/"+id, "DELETE")
 //}
+
+func (h *GatewayHandler) GetInventoryStatistics(c *gin.Context) {
+	var req statistics.Empty
+	if err := c.ShouldBindQuery(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	resp, err := h.statisticsClient.GetInventoryStatistics(context.Background(), &req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, resp)
+}
+
+func (h *GatewayHandler) GetOrdersStatistics(c *gin.Context) {
+	var req statistics.Empty
+	if err := c.ShouldBindQuery(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	resp, err := h.statisticsClient.GetOrderStatistics(context.Background(), &req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, resp)
+}
 
 func (h *GatewayHandler) proxyRequest(c *gin.Context, url, method string) {
 	body, _ := io.ReadAll(c.Request.Body)
