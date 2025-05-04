@@ -24,23 +24,34 @@ func NewProductHandler(service interfaces.StatisticsService) *ProductHandler {
 func (h *ProductHandler) Handler(ctx context.Context, msg *nats.Msg) error {
 	data := msg.Data
 
+	// Попробуй сначала Order (protobuf -> JSON)
+	order, err := h.tryParseOrderProtobuf(data)
+	if err == nil {
+		log.Printf("ORDER SUCCESS: %+v", order)
+		return h.service.RecordOrderActivity(order)
+	}
+
+	order, err = h.tryParseOrderJSON(data)
+	if err == nil {
+		log.Printf("ORDER JSON SUCCESS: %+v", order)
+		return h.service.RecordOrderActivity(order)
+	}
+
+	// Попробуй Product (protobuf -> JSON)
 	product, err := h.tryParseProtobuf(data)
-	if err != nil {
-		product, err = h.tryParseJSON(data)
-		if err != nil {
-			log.Printf("Failed to parse product message: %v", err)
-			return fmt.Errorf("failed to parse product message: %w", err)
-		}
+	if err == nil {
+		log.Printf("PRODUCT SUCCESS: %+v", product)
+		return h.service.RecordProductActivity(product)
 	}
 
-	err = h.service.RecordProductActivity(product)
-	if err != nil {
-		log.Printf("Failed to record product activity: %v", err)
-		return err
+	product, err = h.tryParseJSON(data)
+	if err == nil {
+		log.Printf("PRODUCT JSON SUCCESS: %+v", product)
+		return h.service.RecordProductActivity(product)
 	}
 
-	log.Printf("Successfully processed product activity for ID: %d", product.ID)
-	return nil
+	log.Printf("Failed to parse message as order or product: %v", err)
+	return fmt.Errorf("failed to parse message: %w", err)
 }
 
 func (h *ProductHandler) tryParseProtobuf(data []byte) (*model.Product, error) {
@@ -67,4 +78,39 @@ func (h *ProductHandler) tryParseJSON(data []byte) (*model.Product, error) {
 		return nil, err
 	}
 	return &product, nil
+}
+
+func (h *ProductHandler) tryParseOrderProtobuf(data []byte) (*model.Order, error) {
+	var pbOrder pb.Order
+	err := proto.Unmarshal(data, &pbOrder)
+	if err != nil {
+		return nil, err
+	}
+
+	order := &model.Order{
+		ID:          int64(pbOrder.Id),
+		TotalAmount: pbOrder.TotalAmount,
+		Status:      model.OrderStatus(pbOrder.Status),
+		Items:       make([]model.OrderItem, 0, len(pbOrder.Items)),
+	}
+
+	for _, item := range pbOrder.Items {
+		order.Items = append(order.Items, model.OrderItem{
+			ProductID:   item.ProductId,
+			Quantity:    int(item.Quantity),
+			ProductName: item.ProductName,
+			Price:       item.Price,
+		})
+	}
+
+	return order, nil
+}
+
+func (h *ProductHandler) tryParseOrderJSON(data []byte) (*model.Order, error) {
+	var order model.Order
+	err := json.Unmarshal(data, &order)
+	if err != nil {
+		return nil, err
+	}
+	return &order, nil
 }

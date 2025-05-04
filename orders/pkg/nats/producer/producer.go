@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	ProductSubject = "inventory.product"
+	ProductSubject = "orders.order"
 
 	PushTimeout = time.Second * 30
 )
@@ -28,18 +28,18 @@ func NewOrdersProducer(client *nats.Client) *OrderProducer {
 	}
 }
 
-func (p *OrderProducer) PublishProductCreated(ctx context.Context, product model.Order) error {
-	data, err := json.Marshal(product)
+func (p *OrderProducer) PublishProductCreated(ctx context.Context, product *pb.Order) error {
+	data, err := proto.Marshal(product)
 	if err != nil {
-		return fmt.Errorf("failed to marshal product: %w", err)
+		return fmt.Errorf("failed to marshal proto product: %w", err)
 	}
 
 	err = p.client.Conn.Publish(ProductSubject, data)
 	if err != nil {
-		return fmt.Errorf("failed to publish product created event: %w", err)
+		return fmt.Errorf("failed to publish proto product: %w", err)
 	}
 
-	log.Printf("Published product created event: %s", product.ID)
+	log.Printf("Published proto product created event: %v", product)
 	return nil
 }
 

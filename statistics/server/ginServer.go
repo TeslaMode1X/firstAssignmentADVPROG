@@ -18,10 +18,12 @@ import (
 )
 
 type ginServer struct {
-	app *gin.Engine
-	db  interfaces.Database
-	cfg *config.Config
-	log *log.Logger
+	app        *gin.Engine
+	db         interfaces.Database
+	cfg        *config.Config
+	log        *log.Logger
+	natsClient *nats.Client     // Add this field
+	pubSub     *consumer.PubSub // Add this field to store the PubSub instance
 }
 
 func NewGinServer(conf *config.Config, db interfaces.Database, log *log.Logger) Server {
@@ -43,7 +45,18 @@ func (s *ginServer) Start() {
 		c.String(http.StatusOK, "OK")
 	})
 
-	s.initializeStatisticsHttpHandler()
+	if err := s.initializeStatisticsHttpHandler(); err != nil {
+		s.log.Fatalf("Failed to initialize statistics handler: %v", err)
+	}
+
+	errCh := make(chan error, 1)
+	s.pubSub.Start(context.Background(), errCh)
+
+	go func() {
+		for err := range errCh {
+			s.log.Printf("NATS error: %v", err)
+		}
+	}()
 
 	serverUrl := fmt.Sprintf(":%s", s.cfg.Server.Port)
 	if err := s.app.Run(serverUrl); err != nil {
@@ -51,25 +64,30 @@ func (s *ginServer) Start() {
 	}
 }
 
-func (s *ginServer) initializeStatisticsHttpHandler() {
+func (s *ginServer) initializeStatisticsHttpHandler() error {
 	statisticsRepo := repository.NewStatisticsRepo(s.db)
 	statisticsService := service.NewStatisticsService(statisticsRepo)
 	statisticsHandler := handler.NewStatisticsHandler(statisticsService)
 
-	natsClient, err := nats.NewClient(context.Background(), []string{"localhost:4222"}, "SUACSSL3UAHUDXKFSNVUZRF5UHPMWZ6BFDTJ7M6USDXIEDNPPQYYYCU3VY", true)
+	// Create NATS client and store it in the server struct
+	var err error
+	s.natsClient, err = nats.NewClient(context.Background(), []string{"nats_server:4222"}, "", true) // Remove the NKey if not needed
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to connect to NATS: %w", err)
 	}
-	log.Println("NATS connection status is", natsClient.Conn.Status().String())
+	s.log.Println("NATS connection status is", s.natsClient.Conn.Status().String())
 
-	pubSub := consumer.NewPubSub(natsClient)
-
-	errCh := make(chan error, 1)
-	pubSub.Start(context.Background(), errCh)
+	// Create PubSub and store it in the server struct
+	s.pubSub = consumer.NewPubSub(s.natsClient)
 
 	productHandler := natsHandler.NewProductHandler(statisticsService)
-	pubSub.Subscribe(consumer.PubSubSubscriptionConfig{
-		Subject: "ap2.service_scv.event.created",
+	s.pubSub.Subscribe(consumer.PubSubSubscriptionConfig{
+		Subject: "inventory.product",
+		Handler: productHandler.Handler,
+	})
+
+	s.pubSub.Subscribe(consumer.PubSubSubscriptionConfig{
+		Subject: "orders.order",
 		Handler: productHandler.Handler,
 	})
 
@@ -77,6 +95,16 @@ func (s *ginServer) initializeStatisticsHttpHandler() {
 	{
 		statisticsGroup.GET("/inventory", statisticsHandler.GetInventoryStatistics)
 		statisticsGroup.GET("/orders", statisticsHandler.GetOrdersStatistics)
+	}
+
+	return nil
+}
+
+// Add a Stop method to properly close resources
+func (s *ginServer) Stop() {
+	if s.natsClient != nil {
+		s.log.Println("Closing NATS connection...")
+		s.natsClient.CloseConnect()
 	}
 }
 

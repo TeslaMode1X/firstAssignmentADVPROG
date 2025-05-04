@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"fmt"
 	"github.com/TeslaMode1X/firstAssignmentADVPROG/statistics/internal/interfaces"
 	"github.com/TeslaMode1X/firstAssignmentADVPROG/statistics/internal/model"
 )
@@ -43,7 +44,7 @@ func (r *StatisticsRepo) RecordProductActivityRepo(p *model.Product) error {
 	const op = "repository.statistics.RecordProductActivityRepo"
 
 	var stats model.InventoryStatistics
-	result := r.db.GetDB().First(&stats)
+	result := r.db.GetDB().FirstOrCreate(&stats, model.InventoryStatistics{ID: 1})
 	if result.Error != nil {
 		return result.Error
 	}
@@ -52,9 +53,36 @@ func (r *StatisticsRepo) RecordProductActivityRepo(p *model.Product) error {
 	stats.TotalStock += p.StockLevel
 	stats.TotalInventoryValue += int(p.Price) * p.StockLevel
 
-	result = r.db.GetDB().Save(&stats)
+	if err := r.db.GetDB().Save(&stats).Error; err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *StatisticsRepo) RecordOrderActivityRepo(order *model.Order) error {
+	const op = "repository.statistics.RecordOrderActivityRepo"
+
+	var stats model.OrderStatistics
+	result := r.db.GetDB().FirstOrCreate(&stats, model.OrderStatistics{ID: 1})
 	if result.Error != nil {
-		return result.Error
+		return fmt.Errorf("%s: failed to get or create stats: %w", op, result.Error)
+	}
+
+	stats.TotalOrders += 1
+
+	for _, item := range order.Items {
+		stats.TotalRevenue += item.Price
+	}
+
+	if stats.TotalOrders > 0 {
+		stats.AveragePrice = stats.TotalRevenue / float32(stats.TotalOrders)
+	} else {
+		stats.AveragePrice = 0
+	}
+
+	if err := r.db.GetDB().Save(&stats).Error; err != nil {
+		return fmt.Errorf("%s: failed to save stats: %w", op, err)
 	}
 
 	return nil

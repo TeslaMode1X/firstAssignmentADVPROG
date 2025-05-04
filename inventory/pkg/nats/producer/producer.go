@@ -39,7 +39,7 @@ func (p *InventoryProducer) PublishProductCreated(ctx context.Context, product m
 		return fmt.Errorf("failed to publish product created event: %w", err)
 	}
 
-	log.Printf("Published product created event: %s", product.ID)
+	log.Printf("Published product created event: %d", product.ID)
 	return nil
 }
 
@@ -80,6 +80,6 @@ func (p *InventoryProducer) PublishProductsCreated(ctx context.Context, product 
 		return fmt.Errorf("failed to publish product created event: %w", err)
 	}
 
-	log.Printf("Published product created event: %s", product)
+	log.Printf("Published product created event: %w", product)
 	return nil
 }

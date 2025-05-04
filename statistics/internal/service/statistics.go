@@ -48,3 +48,14 @@ func (s *StatisticsService) RecordProductActivity(p *model.Product) error {
 
 	return nil
 }
+
+func (s *StatisticsService) RecordOrderActivity(order *model.Order) error {
+	const op = "service.statistics.RecordOrderActivity"
+
+	err := s.statisticsRepo.RecordOrderActivityRepo(order)
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	return nil
+}

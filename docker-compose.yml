@@ -10,6 +10,12 @@ services:
     volumes:
       - ./nats-server.conf:/nats-server.conf
     command: ["--config", "/nats-server.conf"]
+    healthcheck:
+      test: [ "CMD", "/nats-server", "--help" ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 2s
 
   inventory_db:
     container_name: inventory_db

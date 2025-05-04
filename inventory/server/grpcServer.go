@@ -18,21 +18,23 @@ import (
 )
 
 type grpcServerObject struct {
-	server *grpc.Server
-	cfg    *config.Config
-	db     database.Database
-	log    *log.Logger
+	server     *grpc.Server
+	cfg        *config.Config
+	db         database.Database
+	log        *log.Logger
+	natsClient *nats.Client
 }
 
 func NewGRPCServer(conf *config.Config, db database.Database, log *log.Logger) Server {
 	productRepository := repository.NewProductPostgresRepository(db)
 	promoteRepository := repository.NewPromotePostgresRepository(db)
 
-	natsClient, err := nats.NewClient(context.Background(), []string{"nats://nats:4222"}, "", false)
+	// Create NATS client
+	natsClient, err := nats.NewClient(context.Background(), []string{"nats_server:4222"}, "", true) // Remove the NKey if not needed
 	if err != nil {
-		log.Fatalf("Failed to connect to NATS: %v", err)
+		log.Fatal(err)
 	}
-	defer natsClient.Close()
+	log.Println("NATS connection status is", natsClient.Conn.Status().String())
 
 	inventoryProducer := producer.NewInventoryProducer(natsClient)
 
@@ -47,10 +49,11 @@ func NewGRPCServer(conf *config.Config, db database.Database, log *log.Logger) S
 	promotion.RegisterPromotionServiceServer(grpcServer, service.NewPromotionService(promotionUseCase))
 
 	return &grpcServerObject{
-		server: grpcServer,
-		cfg:    conf,
-		db:     db,
-		log:    log,
+		server:     grpcServer,
+		cfg:        conf,
+		db:         db,
+		log:        log,
+		natsClient: natsClient,
 	}
 }
 

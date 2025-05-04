@@ -18,23 +18,24 @@ import (
 )
 
 type grpcServerObject struct {
-	server *grpc.Server
-	cfg    *config.Config
-	db     database.Database
-	log    *log.Logger
+	server     *grpc.Server
+	cfg        *config.Config
+	db         database.Database
+	log        *log.Logger
+	natsClient *nats.Client
 }
 
 func NewGRPCServer(conf *config.Config, db database.Database, log *log.Logger) Server {
 	orderRepository := repository.NewOrderPostgresRepository(db)
 	clientRepo := client.NewInventoryClient("http://api_gateway:8080")
 	orderUseCase := usecase.NewOrderUsecaseImpl(orderRepository, clientRepo)
-	//orderHandler := handler.NewOrderHttpHandler(orderUseCase)
 
-	natsClient, err := nats.NewClient(context.Background(), []string{"nats://nats:4222"}, "", false)
+	// Create NATS client
+	natsClient, err := nats.NewClient(context.Background(), []string{"nats_server:4222"}, "", true) // Remove the NKey if not needed
 	if err != nil {
-		log.Fatalf("Failed to connect to NATS: %v", err)
+		log.Fatal(err)
 	}
-	defer natsClient.Close()
+	log.Println("NATS connection status is", natsClient.Conn.Status().String())
 
 	OrdersProducer := producer.NewOrdersProducer(natsClient)
 
@@ -44,11 +45,14 @@ func NewGRPCServer(conf *config.Config, db database.Database, log *log.Logger) S
 
 	orders.RegisterOrderServiceServer(grpcServer, service.NewOrdersService(orderUseCase, OrdersProducer))
 
+	// REMOVE the defer natsClient.Close() line!
+
 	return &grpcServerObject{
-		server: grpcServer,
-		cfg:    conf,
-		db:     db,
-		log:    log,
+		server:     grpcServer,
+		cfg:        conf,
+		db:         db,
+		log:        log,
+		natsClient: natsClient, // Store the NATS client
 	}
 }
 
@@ -67,4 +71,12 @@ func (s *grpcServerObject) Start() {
 	if err := s.server.Serve(lis); err != nil {
 		s.log.Fatalf("Failed to serve: %v", err)
 	}
+}
+
+func (s *grpcServerObject) Stop() {
+	if s.natsClient != nil {
+		s.log.Println("Closing NATS connection...")
+		s.natsClient.Close()
+	}
+	s.server.GracefulStop()
 }

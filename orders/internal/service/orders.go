@@ -55,7 +55,7 @@ func (s *OrdersService) CreateOrder(ctx context.Context, orderProto *orders.Orde
 		})
 	}
 
-	if err := s.producer.PublishProductCreated(ctx, *modelOrder); err != nil {
+	if err := s.producer.PublishProductCreated(ctx, responseOrder); err != nil {
 		// Логируем ошибку, но не прерываем выполнение
 	}
 
