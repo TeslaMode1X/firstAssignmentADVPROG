@@ -1,4 +1,13 @@
 services:
+  redis:
+    container_name: redis_cache
+    image: redis:latest
+    env_file:
+      - ./inventory/.env.inventory
+    ports:
+      - "7123:6379"
+    networks:
+      - app-network
   nats:
     container_name: nats_server
     image: nats:latest
@@ -90,6 +99,8 @@ services:
       inventory_db:
         condition: service_healthy
       nats:
+        condition: service_started
+      redis:
         condition: service_started
     networks:
       - app-network

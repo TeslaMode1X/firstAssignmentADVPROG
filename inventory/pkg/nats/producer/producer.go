@@ -14,8 +14,7 @@ import (
 
 const (
 	ProductSubject = "inventory.product"
-
-	PushTimeout = time.Second * 30
+	PushTimeout    = time.Second * 30
 )
 
 type InventoryProducer struct {

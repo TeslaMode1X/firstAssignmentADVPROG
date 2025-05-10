@@ -17,6 +17,18 @@ type Product struct {
 	DeletedAt   *time.Time
 }
 
+type ProductRedis struct {
+	ID          int64      `json:"id"`
+	Name        string     `json:"name"`
+	Description string     `json:"description"`
+	Price       float32    `json:"price"`
+	StockLevel  int        `json:"stock_level"`
+	CategoryID  int64      `json:"category_id"`
+	CreatedAt   time.Time  `json:"createdAt"`
+	UpdatedAt   time.Time  `json:"updatedAt"`
+	DeletedAt   *time.Time `json:"deletedAt"`
+}
+
 func (p *Product) Validate() error {
 	if p.Name == "" {
 		return fmt.Errorf("product name cannot be empty")

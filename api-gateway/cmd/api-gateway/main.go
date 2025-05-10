@@ -64,3 +64,33 @@ func main() {
 		return
 	}
 }
+
+// order create
+//{
+//	"id": 1,
+//	"items": [
+//{
+//	"product_id": 1,
+//	"quantity": 2,
+//	"product_name": "Wireless Mouse",
+//	"price": 25.99
+//},
+//{
+//	"product_id": 2,
+//	"quantity": 1,
+//	"product_name": "Keyboard",
+//	"price": 45.50
+//}
+//],
+//	"total_amount": 97.48,
+//	"status": "completed"
+//}
+
+//product create
+//{
+//"name": "Mouse",
+//"description": "for gaming",
+//"price": 25.99,
+//"stock":50,
+//"category": "1"
+//}

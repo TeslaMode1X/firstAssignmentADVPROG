@@ -37,7 +37,7 @@ func (s *InventoryService) CreateProduct(ctx context.Context, req *inventory.Cre
 		Description: req.Description,
 		Price:       float32(req.Price),
 		StockLevel:  int(req.Stock),
-		CategoryID:  int64(uint(categoryID)),
+		CategoryID:  int64(categoryID),
 	}
 
 	if err = s.productUsecase.ProductDataProcessing(product); err != nil {
@@ -158,9 +158,6 @@ func (s *InventoryService) GetProducts(ctx context.Context, _ *inventory.Empty) 
 			Stock:       int32(p.StockLevel),
 			Category:    strconv.FormatUint(uint64(p.CategoryID), 10),
 		})
-	}
-
-	if err := s.producer.PublishProductsCreated(ctx, products); err != nil {
 	}
 
 	return &inventory.GetProductsResponse{

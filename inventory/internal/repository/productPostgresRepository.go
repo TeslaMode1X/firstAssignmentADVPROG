@@ -25,11 +25,12 @@ func (p *ProductPostgresRepository) InsertProduct(product *model.Product) error 
 	data := toProductDTO(product)
 
 	result := p.db.GetDb().Create(data)
-
 	if result.Error != nil {
 		log.Errorf("InsertProductData: %v", result.Error)
 		return result.Error
 	}
+
+	product.ID = data.ID
 
 	log.Debugf("InsertProductData: %v rows affected", result.RowsAffected)
 	return nil
