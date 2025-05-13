@@ -23,6 +23,16 @@ type Order struct {
 	CompletedAt *time.Time
 }
 
+type OrderRedis struct {
+	ID          int64       `json:"id"`
+	Items       []OrderItem `json:"items"`
+	TotalAmount float32     `json:"total_amount"`
+	Status      OrderStatus `json:"status"`
+	CreatedAt   time.Time   `json:"created_at"`
+	UpdatedAt   time.Time   `json:"updated_at"`
+	CompletedAt *time.Time  `json:"completed_at"`
+}
+
 type OrderMessage struct {
 	Message string
 }

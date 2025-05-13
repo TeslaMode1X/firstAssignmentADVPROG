@@ -2,8 +2,11 @@ package server
 
 import (
 	"context"
+	"github.com/TeslaMode1X/firstAssignmentADVPROG/statistics/internal/model"
+	"github.com/TeslaMode1X/firstAssignmentADVPROG/statistics/pkg/nats/producer"
 	"log"
 	"net"
+	"time"
 
 	"github.com/TeslaMode1X/firstAssignmentADVPROG/proto/gen/statistics"
 	"github.com/TeslaMode1X/firstAssignmentADVPROG/statistics/config"
@@ -19,12 +22,13 @@ import (
 )
 
 type grpcServerObject struct {
-	server     *grpc.Server
-	cfg        *config.Config
-	db         interfaces.Database
-	log        *log.Logger
-	natsClient *nats.Client
-	pubSub     *consumer.PubSub
+	server            *grpc.Server
+	cfg               *config.Config
+	db                interfaces.Database
+	log               *log.Logger
+	natsClient        *nats.Client
+	pubSub            *consumer.PubSub
+	sendRefreshCancel context.CancelFunc
 }
 
 func NewGrpcServerObject(conf *config.Config, db interfaces.Database, log *log.Logger) Server {
@@ -59,6 +63,10 @@ func NewGrpcServerObject(conf *config.Config, db interfaces.Database, log *log.L
 		Subject: "orders.order",
 		Handler: productHandler.Handler,
 	})
+
+	orderProducer := producer.NewOrderProducer(s.natsClient)
+
+	s.startCacheRefreshJob(context.Background(), *orderProducer, 1*time.Minute)
 
 	statistics.RegisterStatisticsServiceServer(grpcServer, statGrpc.NewStatisticsService(statisticsService))
 
@@ -99,4 +107,34 @@ func (s *grpcServerObject) Stop() {
 	if s.server != nil {
 		s.server.GracefulStop()
 	}
+}
+
+func (s *grpcServerObject) startCacheRefreshJob(ctx context.Context, orderProducer producer.OrderProducer, refreshInterval time.Duration) {
+	refreshCtx, cancel := context.WithCancel(ctx)
+	s.sendRefreshCancel = cancel
+
+	pr := model.Product{}
+
+	go func() {
+		ticker := time.NewTicker(refreshInterval)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ticker.C:
+				s.log.Println("Running scheduled nats sending...")
+				err := orderProducer.Push(ctx, pr)
+				if err != nil {
+					s.log.Printf("Scheduled nats refresh failed: %v", err)
+				} else {
+					s.log.Println("Scheduled nats refresh completed successfully")
+				}
+			case <-refreshCtx.Done():
+				s.log.Println("Cache refresh job terminated")
+				return
+			}
+		}
+	}()
+
+	s.log.Printf("Background cache refresh job started with %v interval", refreshInterval)
 }

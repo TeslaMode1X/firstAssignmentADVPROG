@@ -4,17 +4,20 @@ import (
 	"context"
 	"github.com/TeslaMode1X/firstAssignmentADVPROG/orders/config"
 	"github.com/TeslaMode1X/firstAssignmentADVPROG/orders/internal/database"
+	redisCache "github.com/TeslaMode1X/firstAssignmentADVPROG/orders/internal/database/cache"
 	"github.com/TeslaMode1X/firstAssignmentADVPROG/orders/internal/handler/client"
 	"github.com/TeslaMode1X/firstAssignmentADVPROG/orders/internal/repository"
 	"github.com/TeslaMode1X/firstAssignmentADVPROG/orders/internal/service"
 	"github.com/TeslaMode1X/firstAssignmentADVPROG/orders/internal/usecase"
 	"github.com/TeslaMode1X/firstAssignmentADVPROG/orders/pkg/nats"
 	"github.com/TeslaMode1X/firstAssignmentADVPROG/orders/pkg/nats/producer"
+	redisconn "github.com/TeslaMode1X/firstAssignmentADVPROG/orders/pkg/redis"
 	"github.com/TeslaMode1X/firstAssignmentADVPROG/proto/gen/orders"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 	"log"
 	"net"
+	"time"
 )
 
 type grpcServerObject struct {
@@ -28,7 +31,8 @@ type grpcServerObject struct {
 func NewGRPCServer(conf *config.Config, db database.Database, log *log.Logger) Server {
 	orderRepository := repository.NewOrderPostgresRepository(db)
 	clientRepo := client.NewInventoryClient("http://api_gateway:8080")
-	orderUseCase := usecase.NewOrderUsecaseImpl(orderRepository, clientRepo)
+
+	ctx := context.Background()
 
 	// Create NATS client
 	natsClient, err := nats.NewClient(context.Background(), []string{"nats_server:4222"}, "", true) // Remove the NKey if not needed
@@ -42,6 +46,27 @@ func NewGRPCServer(conf *config.Config, db database.Database, log *log.Logger) S
 	grpcServer := grpc.NewServer()
 
 	reflection.Register(grpcServer)
+
+	// REDIS connection
+	log.Println("Attempting to connect to Redis...")
+	redisClient, err := redisconn.NewClient(ctx, redisconn.GetRedisConfig())
+	if err != nil {
+		log.Fatalf("Failed to connect to Redis: %v", err)
+	}
+	log.Println("Successfully connected to Redis!")
+
+	// Test Redis connection with PING
+	pingErr := redisClient.Ping(ctx)
+	if pingErr != nil {
+		log.Fatalf("Redis PING failed: %v", pingErr)
+	}
+	log.Println("Redis PING successful - connection is working!")
+
+	// REDIS cache
+	clientRedisCache := redisCache.NewClient(redisClient, 12*time.Hour)
+	log.Println("Redis cache client initialized with 10 hour TTL")
+
+	orderUseCase := usecase.NewOrderUsecaseImpl(orderRepository, clientRepo, clientRedisCache)
 
 	orders.RegisterOrderServiceServer(grpcServer, service.NewOrdersService(orderUseCase, OrdersProducer))
 
